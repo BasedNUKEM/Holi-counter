@@ -24,7 +24,7 @@
             border-radius: 15px;
             box-shadow: 0 0 20px rgba(255, 0, 150, 0.5); /* Naughty neon glow */
             border: 2px solid #ff1493; /* Hot pink degen border */
-            max-width: 400px;
+            max-width: 500px;
             width: 90%;
         }
 
@@ -109,6 +109,106 @@
             opacity: 0.8;
         }
 
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 10px;
+            border: 1px solid rgba(255, 20, 147, 0.3);
+        }
+
+        .metric-label {
+            font-size: 0.75em;
+            opacity: 0.7;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-value {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #ffd700;
+        }
+
+        .mini-progress-wrapper {
+            position: relative;
+            width: 100%;
+            height: 12px;
+            background: #222;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .mini-progress-fill {
+            width: 0%;
+            height: 100%;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            transition: width 0.8s ease-out;
+        }
+
+        .volume-fill {
+            background: linear-gradient(90deg, #00ffff, #00d4ff, #0099ff);
+        }
+
+        .liquidity-fill {
+            background: linear-gradient(90deg, #00ff00, #7fff00, #32cd32);
+        }
+
+        .mini-progress-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 5px,
+                rgba(255, 255, 255, 0.15) 5px,
+                rgba(255, 255, 255, 0.15) 10px
+            );
+            animation: mini-stripe-slide 0.8s linear infinite;
+        }
+
+        @keyframes mini-stripe-slide {
+            0% { transform: translateX(-10px); }
+            100% { transform: translateX(10px); }
+        }
+
+        .metric-percent {
+            font-size: 0.7em;
+            opacity: 0.6;
+            margin-top: 3px;
+        }
+
+        .alert-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff4500, #ff1493);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.65em;
+            margin-left: 5px;
+            animation: pulse-alert 1s infinite;
+            box-shadow: 0 0 10px rgba(255, 69, 0, 0.6);
+        }
+
+        @keyframes pulse-alert {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+
         /* Responsive for degen phones */
         @media (max-width: 480px) {
             .holi-container { padding: 15px; }
@@ -125,16 +225,48 @@
             <div class="progress-fill" id="fillBar">0%</div>
         </div>
         <div class="mc-text" id="mcText">$HOLI: Loading Gains...</div>
+        
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">💧 Volume (24h)</div>
+                <div class="metric-value" id="volumeValue">$0</div>
+                <div class="mini-progress-wrapper">
+                    <div class="mini-progress-fill volume-fill" id="volumeBar"></div>
+                </div>
+                <div class="metric-percent" id="volumePercent">0% of $20K goal</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">🎁 Liquidity</div>
+                <div class="metric-value" id="liquidityValue">$0</div>
+                <div class="mini-progress-wrapper">
+                    <div class="mini-progress-fill liquidity-fill" id="liquidityBar"></div>
+                </div>
+                <div class="metric-percent" id="liquidityPercent">0% of $20K goal</div>
+            </div>
+        </div>
     </div>
 
     <script>
         // Configuration
         const CONTRACT_ADDRESS = '0xD0Dce4A1aC8D6195a9628800cE518e278808d11a';
         const TARGET_MC = 30000; // Goal: 30K MC
+        const TARGET_VOLUME = 20000; // Goal: 20K daily volume
+        const TARGET_LIQUIDITY = 20000; // Goal: 20K liquidity
+        const VOLUME_ALERT_THRESHOLD = 500; // Alert on ±$500 swings
         
         // DOM Elements
         const fillBar = document.getElementById('fillBar');
         const mcText = document.getElementById('mcText');
+        const volumeValue = document.getElementById('volumeValue');
+        const volumeBar = document.getElementById('volumeBar');
+        const volumePercent = document.getElementById('volumePercent');
+        const liquidityValue = document.getElementById('liquidityValue');
+        const liquidityBar = document.getElementById('liquidityBar');
+        const liquidityPercent = document.getElementById('liquidityPercent');
+        
+        // Track previous values for alerts
+        let previousVolume = null;
 
         // Function to fetch Market Cap from DexScreener
         async function fetchMarketCap() {
@@ -146,8 +278,10 @@
                     // Find Base pair or default to first (highest liquidity)
                     const pair = data.pairs.find(p => p.chainId === 'base') || data.pairs[0];
                     const currentMC = pair.marketCap || pair.fdv; // Use marketCap or FDV
+                    const volume24h = pair.volume?.h24 || 0;
+                    const liquidity = pair.liquidity?.usd || 0;
                     
-                    updateProgress(currentMC);
+                    updateProgress(currentMC, volume24h, liquidity);
                 } else {
                     console.error('No pair data found');
                     mcText.textContent = 'Error loading data';
@@ -158,23 +292,47 @@
             }
         }
 
-        function updateProgress(currentMC) {
-            // Calculate percentage, capped at 100%
-            const percent = Math.min((currentMC / TARGET_MC) * 100, 100);
-            const displayPercent = percent.toFixed(1);
+        function updateProgress(currentMC, volume24h, liquidity) {
+            // Calculate MC percentage, capped at 100%
+            const mcPercent = Math.min((currentMC / TARGET_MC) * 100, 100);
+            const mcDisplayPercent = mcPercent.toFixed(1);
 
-            // Update Text
+            // Update MC Text
             mcText.textContent = `$HOLI: $${currentMC.toLocaleString()} / $${TARGET_MC.toLocaleString()} MC 🎁`;
             
-            // Update Bar Width and Text
-            fillBar.style.width = `${percent}%`;
-            fillBar.textContent = `${displayPercent}%`;
+            // Update MC Bar Width and Text
+            fillBar.style.width = `${mcPercent}%`;
+            fillBar.textContent = `${mcDisplayPercent}%`;
 
             // Celebration if goal reached
-            if (percent >= 100) {
+            if (mcPercent >= 100) {
                 console.log('🔔 Jingle all the way to the moon!');
                 fillBar.style.background = 'linear-gradient(90deg, #00ff00, #ffd700)'; // Green for money
             }
+            
+            // Update Volume
+            const volumePercent = Math.min((volume24h / TARGET_VOLUME) * 100, 100);
+            volumeValue.textContent = `$${volume24h.toLocaleString()}`;
+            volumeBar.style.width = `${volumePercent}%`;
+            volumePercent.innerHTML = `${volumePercent.toFixed(0)}% of $${(TARGET_VOLUME/1000).toFixed(0)}K goal`;
+            
+            // Check for volume alerts
+            if (previousVolume !== null) {
+                const volumeChange = Math.abs(volume24h - previousVolume);
+                if (volumeChange >= VOLUME_ALERT_THRESHOLD) {
+                    const direction = volume24h > previousVolume ? '🚀 PUMP' : '📉 DIP';
+                    const alertBadge = `<span class="alert-badge">${direction} $${volumeChange.toFixed(0)}</span>`;
+                    volumeValue.innerHTML = `$${volume24h.toLocaleString()} ${alertBadge}`;
+                    console.log(`🔔 Volume Alert: ${direction} of $${volumeChange.toFixed(0)}!`);
+                }
+            }
+            previousVolume = volume24h;
+            
+            // Update Liquidity
+            const liqPercent = Math.min((liquidity / TARGET_LIQUIDITY) * 100, 100);
+            liquidityValue.textContent = `$${liquidity.toLocaleString()}`;
+            liquidityBar.style.width = `${liqPercent}%`;
+            liquidityPercent.textContent = `${liqPercent.toFixed(0)}% of $${(TARGET_LIQUIDITY/1000).toFixed(0)}K goal`;
         }
 
         // Initial Load
