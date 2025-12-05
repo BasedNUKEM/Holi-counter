@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Holi-Daze $HOLI to 30K MC 🚀🎄</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #000428, #004e92); /* Night sky over Base chain */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Arial Black', sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .holi-container {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(255, 0, 150, 0.5); /* Naughty neon glow */
+            border: 2px solid #ff1493; /* Hot pink degen border */
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .holi-title {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #ff4500; /* Santa fire text */
+            animation: jingle 2s infinite;
+        }
+
+        @keyframes jingle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .progress-wrapper {
+            position: relative;
+            width: 100%;
+            height: 30px;
+            background: #333; /* Coal-black for jeets */
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .progress-fill {
+            width: 0%; /* Start at 0 */
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff69b4, #ffd700); /* Red-to-gold Santa pump */
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 15px;
+            color: #fff;
+            font-size: 1em;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+            transition: width 1s ease-out;
+            box-sizing: border-box;
+        }
+
+        .progress-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255, 255, 255, 0.1) 10px,
+                rgba(255, 255, 255, 0.1) 20px
+            ); /* Candy cane stripes */
+            animation: stripe-slide 1s linear infinite;
+        }
+
+        @keyframes stripe-slide {
+            0% { transform: translateX(-20px); }
+            100% { transform: translateX(20px); }
+        }
+
+        .holi-emoji {
+            font-size: 4em;
+            margin: 10px 0;
+            filter: drop-shadow(0 0 10px #ff4500);
+            animation: twinkle 1.5s infinite alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.8; transform: rotate(-5deg); }
+            100% { opacity: 1; transform: rotate(5deg); }
+        }
+
+        .mc-text {
+            font-size: 0.9em;
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+
+        /* Responsive for degen phones */
+        @media (max-width: 480px) {
+            .holi-container { padding: 15px; }
+            .holi-title { font-size: 1.2em; }
+            .holi-emoji { font-size: 3em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="holi-container">
+        <div class="holi-title">Holi-Daze $HOLI to 30K MC 🎄💎</div>
+        <div class="holi-emoji">🧞‍♀️🎅</div> <!-- Holi's sexy Santa vibe -->
+        <div class="progress-wrapper">
+            <div class="progress-fill" id="fillBar">0%</div>
+        </div>
+        <div class="mc-text" id="mcText">$HOLI: Loading Gains...</div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONTRACT_ADDRESS = '0xD0Dce4A1aC8D6195a9628800cE518e278808d11a';
+        const TARGET_MC = 30000; // Goal: 30K MC
+        
+        // DOM Elements
+        const fillBar = document.getElementById('fillBar');
+        const mcText = document.getElementById('mcText');
+
+        // Function to fetch Market Cap from DexScreener
+        async function fetchMarketCap() {
+            try {
+                const response = await fetch(`https://api.dexscreener.com/latest/dex/tokens/${CONTRACT_ADDRESS}`);
+                const data = await response.json();
+                
+                if (data.pairs && data.pairs.length > 0) {
+                    // Find Base pair or default to first (highest liquidity)
+                    const pair = data.pairs.find(p => p.chainId === 'base') || data.pairs[0];
+                    const currentMC = pair.marketCap || pair.fdv; // Use marketCap or FDV
+                    
+                    updateProgress(currentMC);
+                } else {
+                    console.error('No pair data found');
+                    mcText.textContent = 'Error loading data';
+                }
+            } catch (error) {
+                console.error('Error fetching market cap:', error);
+                mcText.textContent = 'Error loading data';
+            }
+        }
+
+        function updateProgress(currentMC) {
+            // Calculate percentage, capped at 100%
+            const percent = Math.min((currentMC / TARGET_MC) * 100, 100);
+            const displayPercent = percent.toFixed(1);
+
+            // Update Text
+            mcText.textContent = `$HOLI: $${currentMC.toLocaleString()} / $${TARGET_MC.toLocaleString()} MC 🎁`;
+            
+            // Update Bar Width and Text
+            fillBar.style.width = `${percent}%`;
+            fillBar.textContent = `${displayPercent}%`;
+
+            // Celebration if goal reached
+            if (percent >= 100) {
+                console.log('🔔 Jingle all the way to the moon!');
+                fillBar.style.background = 'linear-gradient(90deg, #00ff00, #ffd700)'; // Green for money
+            }
+        }
+
+        // Initial Load
+        fetchMarketCap();
+
+        // Auto-refresh every 30 seconds
+        setInterval(fetchMarketCap, 30000);
+    </script>
+</body>
+</html>
